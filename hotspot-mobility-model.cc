@@ -107,6 +107,7 @@ namespace ns3
     m_locations.clear();
     m_pauses.clear();
     m_probabilities.clear();
+    m_totalProb = 0;
   }
 
   Vector
