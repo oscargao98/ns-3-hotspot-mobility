@@ -1,6 +1,6 @@
 # ns-3-hotspot-mobility
 
-**NOT FINISHED YET!!**
+**Mostly Finished** -- Ready to Test
 
 Goal: Implement a hotspot mobility model to add to ns-3.
 
