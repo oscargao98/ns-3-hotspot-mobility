@@ -9,12 +9,17 @@
 
 #include "constant-velocity-helper.h"
 #include "mobility-model.h"
+#include "position-allocator.h"
+#include "ns3/object-vector.h"
 #include "ns3/random-variable-stream.h"
 #include "ns3/string.h"
 #include "ns3/boolean.h"
 #include "ns3/simulator.h"
 #include "ns3/pointer.h"
+#include <tuple>
 #include <vector>
+#include <string>
+#include <sstream>
 
 namespace ns3
 {
@@ -53,7 +58,10 @@ namespace ns3
 
     ConstantVelocityHelper m_helper;     //!< helper for velocity computations
     Ptr<RandomVariableStream> m_speed;   //!< random variable to generate speeds
+    Ptr<ListPositionAllocator> m_position; //!< pointer to position allocator
     std::vector<Vector> m_locations;     //!< array of hotspot locations
+    std::string m_pauses_str;
+    std::string m_probabilities_str;
     std::vector<double> m_pauses;        //!< array of hotspot pauses
     std::vector<double> m_probabilities; //!< array of hotspot probabilities
 

@@ -14,6 +14,21 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE("6110-Final-Project");
 
+/**
+ * Function called when there is a course change
+ * \param context event context
+ * \param mobility a pointer to the mobility model
+ */
+static void 
+CourseChange (std::string context, Ptr<const MobilityModel> mobility)
+{
+  Vector pos = mobility->GetPosition ();
+  Vector vel = mobility->GetVelocity ();
+  std::cout << Simulator::Now () << ", model=" << mobility << ", POS: x=" << pos.x << ", y=" << pos.y
+            << ", z=" << pos.z << "; VEL:" << vel.x << ", y=" << vel.y
+            << ", z=" << vel.z << std::endl;
+}
+
 int main(int argc, char *argv[])
 {
     // Initialize Parameters
@@ -23,6 +38,7 @@ int main(int argc, char *argv[])
     float minSpeed = 4.0;
     float maxSpeed = 6.0;
     bool normal = 0;
+    bool course = false;
 
     // Attach Command Line Inputs
     CommandLine cmd(__FILE__);
@@ -31,6 +47,7 @@ int main(int argc, char *argv[])
     cmd.AddValue("minSpeed", "Min Speed", minSpeed);
     cmd.AddValue("maxSpeed", "Max Speed", maxSpeed);
     cmd.AddValue("normalProb", "normalize probability", normal);
+    cmd.AddValue("courseChange", "Trace Course Change", course);
     cmd.Parse(argc, argv);
 
     // Create Nodes
@@ -40,22 +57,36 @@ int main(int argc, char *argv[])
     // Set Mobility Model
     ObjectFactory pos;
     pos.SetTypeId("ns3::RandomRectanglePositionAllocator");
-    pos.Set("X", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=45.0]"));
-    pos.Set("Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=45.0]"));
+    pos.Set("X", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"));
+    pos.Set("Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=50.0]"));
     Ptr<PositionAllocator> PositionAlloc = pos.Create()->GetObject<PositionAllocator>();
 
     std::ostringstream speedInputStream;
     speedInputStream << std::fixed << std::setprecision(1) << "ns3::UniformRandomVariable[Min="
                      << minSpeed << "|Max=" << maxSpeed << "]";
 
+    Ptr<ListPositionAllocator> listpositionAlloc = CreateObject<ListPositionAllocator> ();
+    listpositionAlloc->Add (Vector(10, 40, 0));
+    listpositionAlloc->Add (Vector(5, 7, 0));
+    listpositionAlloc->Add (Vector(20, 40, 0));
+    listpositionAlloc->Add (Vector(15, 25, 0));
+    listpositionAlloc->Add (Vector(35, 20, 0));
+    std::string pauses = "15,15,15,15,15";
+    std::string probabilities = "0.4,0.2,0.1,0.25,0.05";
+
     // Set Mobility Model
     MobilityHelper mobilityModel;
     mobilityModel.SetMobilityModel("ns3::HotspotMobilityModel",
                                    "Speed", StringValue(speedInputStream.str()),
-                                   "NormalizeProbability", BooleanValue(normal));
+                                   "NormalizeProbability", BooleanValue(normal),
+                                   "HotspotPositionAlloc", PointerValue(listpositionAlloc),
+                                   "Probabilities", StringValue(probabilities),
+                                   "PauseTimes", StringValue(pauses)
+                                   );
     mobilityModel.SetPositionAllocator(PositionAlloc);
     mobilityModel.Install(nodes);
     // Add the same set of hotspot to every node
+    /*
     for (int i{0}; i < numNodes; i++)
     {
         nodes.Get(i)->GetObject<HotspotMobilityModel>()->AddHotspot({10, 40, 0}, 15.0, 0.4);
@@ -71,17 +102,23 @@ int main(int argc, char *argv[])
     Oscar.Create(1);
     mobilityModel.Install(Oscar);
     Oscar.Get(0)->GetObject<HotspotMobilityModel>()->AddHotspot({0, 0, 0}, 1000, 1);
+    */
 
     std::cout << "Before Simulation" << '\n';
     std::ofstream preSim("pre-node-locations.data");
-    for (int i{0}; i < numNodes; i++)
+    for (int i=0; i < numNodes; i++)
     {
         Vector apV = nodes.Get(i)->GetObject<MobilityModel>()->GetPosition();
         preSim << apV.x << ", " << apV.y << '\n';
     }
-    Vector apV = Oscar.Get(0)->GetObject<MobilityModel>()->GetPosition();
-    preSim << apV.x << ", " << apV.y;
+    //Vector apV = Oscar.Get(0)->GetObject<MobilityModel>()->GetPosition();
+    //preSim << apV.x << ", " << apV.y;
     preSim.close();
+
+    if(course){
+    Config::Connect ("/NodeList/*/$ns3::MobilityModel/CourseChange",
+                   MakeCallback (&CourseChange));
+    }   
 
     Simulator::Stop(Seconds(duration));
     Simulator::Run();
@@ -90,15 +127,15 @@ int main(int argc, char *argv[])
 
     // Get post-simulation nodes' locations
     std::ofstream postSim("post-node-locations.data");
-    for (int i{0}; i < numNodes; i++)
+    for (int i=0; i < numNodes; i++)
     {
         Vector apV = nodes.Get(i)->GetObject<MobilityModel>()->GetPosition();
         std::cout << "Node #" << (i + 1) << " "
                   << "x = " << apV.x << ", y = " << apV.y << "\n";
         postSim << apV.x << ", " << apV.y << '\n';
     }
-    apV = Oscar.Get(0)->GetObject<MobilityModel>()->GetPosition();
-    postSim << apV.x << ", " << apV.y;
+    //apV = Oscar.Get(0)->GetObject<MobilityModel>()->GetPosition();
+    //postSim << apV.x << ", " << apV.y;
     postSim.close();
 
     Simulator::Destroy();

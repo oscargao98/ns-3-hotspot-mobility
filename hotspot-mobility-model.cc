@@ -26,7 +26,22 @@ namespace ns3
                                           "A boolean to decide to normalize probability or not.",
                                           BooleanValue(0),
                                           MakeBooleanAccessor(&HotspotMobilityModel::m_normal),
-                                          MakeBooleanChecker());
+                                          MakeBooleanChecker())
+                            .AddAttribute ("HotspotPositionAlloc",
+                                           "The position model used to get the Hotspot Location",
+                                           PointerValue (),
+                                           MakePointerAccessor (&HotspotMobilityModel::m_position),
+                                           MakePointerChecker<ListPositionAllocator> ())
+                            .AddAttribute ("Probabilities",
+                                           "A list of probabilities corresponding to each Hotspot",
+                                           StringValue (),
+                                           MakeStringAccessor (&HotspotMobilityModel::m_probabilities_str),
+                                           MakeStringChecker ())
+                            .AddAttribute ("PauseTimes",
+                                           "A list of pause times corresponding to each Hotspot",
+                                           StringValue (),
+                                           MakeStringAccessor (&HotspotMobilityModel::m_pauses_str),
+                                           MakeStringChecker());
     return tid;
   }
 
@@ -71,6 +86,34 @@ namespace ns3
   void
   HotspotMobilityModel::DoInitialize(void)
   {
+    NS_ASSERT_MSG (m_position, "No position allocator added before using this model");
+    int m_size = m_position->GetSize();
+    for(int i=0;i<m_size; i++){
+      m_locations.push_back(m_position->GetNext());
+    }
+    NS_ASSERT_MSG((m_locations.size()), "Must add at least one hotspot!");
+    NS_ASSERT_MSG(!(m_pauses_str.empty()), "No Pause times added before using this model");
+    std::stringstream ss1(m_pauses_str);
+    std::string s;
+    int i=0;
+    while(std::getline(ss1, s, ',')){
+      std::cout<<i<<"th elemet is:"<<s<<"\n";
+      m_pauses.push_back(std::stod(s));
+      i++;
+    }
+    i = 0;
+    NS_ASSERT_MSG (!(m_probabilities_str.empty()), "No Probabilities added before using this model");
+    std::stringstream ss2(m_probabilities_str);
+    while(std::getline(ss2, s, ',')){
+      m_probabilities.push_back(std::stod(s));
+      i++;
+    }
+    int m_probsize = m_probabilities.size();
+    int m_pausesize = m_pauses.size();
+    NS_ASSERT_MSG(((m_probsize == m_size)&(m_pausesize == m_size)), "Number of probabilities and pause times are not equal to number of hotspots");
+    for(int i=0; i<m_probsize;i++){
+      m_totalProb += m_probabilities[i];
+    }
     DoInitializePrivate();
     MobilityModel::DoInitialize();
   }
@@ -80,7 +123,6 @@ namespace ns3
   {
     m_helper.Update();
     m_helper.Pause();
-    NS_ASSERT_MSG((m_locations.size()), "Must add at least one hotspot!");
     if (!m_normal)
       NS_ASSERT_MSG((m_totalProb == 1), "Probability must add to 1!");
     Time pause{0};
@@ -92,7 +134,7 @@ namespace ns3
     NotifyCourseChange();
   }
 
-  void
+  /*void
   HotspotMobilityModel::AddHotspot(Vector location, double pause, double prob)
   {
     m_locations.push_back(location);
@@ -108,7 +150,7 @@ namespace ns3
     m_pauses.clear();
     m_probabilities.clear();
     m_totalProb = 0;
-  }
+  }*/
 
   Vector
   HotspotMobilityModel::DoGetPosition(void) const
